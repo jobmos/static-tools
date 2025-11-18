@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polygon WKT Tool</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #map {
+            flex: 1;
+            width: 100%;
+        }
+        #wkt-panel {
+            background: white;
+            border-top: 2px solid #ddd;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #wkt-panel h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 16px;
+        }
+        #wkt-output, #geojson-output {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            white-space: pre-wrap;
+            color: #333;
+        }
+        .copy-btn {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .copy-btn:hover {
+            background: #45a049;
+        }
+        .copy-btn:active {
+            background: #3d8b40;
+        }
+        .info {
+            margin-top: 10px;
+            padding: 8px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            font-size: 13px;
+            color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="wkt-panel">
+        <h3>WKT Output (EPSG:4326)</h3>
+        <div id="wkt-output">Draw a polygon on the map to see its WKT representation here.</div>
+        <button class="copy-btn" id="copy-wkt-btn" style="display: none;">Copy WKT to Clipboard</button>
+        
+        <h3 style="margin-top: 20px;">GeoJSON Payload</h3>
+        <div id="geojson-output">Draw a polygon on the map to see its GeoJSON payload here.</div>
+        <button class="copy-btn" id="copy-geojson-btn" style="display: none;">Copy GeoJSON to Clipboard</button>
+        
+        <div class="info">Use the polygon tool (square icon) on the left side of the map to draw a polygon.</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script>
+        // Initialize the map
+        const map = L.map('map').setView([0, 0], 2);
+
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Create a feature group for drawn items
+        const drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        // Initialize the draw control
+        const drawControl = new L.Control.Draw({
+            position: 'topleft',
+            draw: {
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true,
+                    drawError: {
+                        color: '#e1e100',
+                        message: '<strong>Error:</strong> shape edges cannot cross!'
+                    },
+                    shapeOptions: {
+                        color: '#3388ff'
+                    }
+                },
+                polyline: false,
+                rectangle: false,
+                circle: false,
+                marker: false,
+                circlemarker: false
+            },
+            edit: {
+                featureGroup: drawnItems,
+                remove: true
+            }
+        });
+        map.addControl(drawControl);
+
+        let currentWKT = '';
+        let currentGeoJSON = '';
+
+        // Function to convert polygon to WKT
+        function polygonToWKT(layer) {
+            const latlngs = layer.getLatLngs()[0];
+            const coords = latlngs.map(latlng => `${latlng.lng} ${latlng.lat}`).join(', ');
+            // Close the polygon by repeating the first coordinate
+            const firstCoord = `${latlngs[0].lng} ${latlngs[0].lat}`;
+            return `POLYGON((${coords}, ${firstCoord}))`;
+        }
+
+        // Function to convert polygon to GeoJSON payload
+        function polygonToGeoJSON(layer) {
+            const latlngs = layer.getLatLngs()[0];
+            const coordinates = latlngs.map(latlng => [latlng.lng, latlng.lat]);
+            // Close the polygon by repeating the first coordinate
+            coordinates.push([latlngs[0].lng, latlngs[0].lat]);
+            
+            const payload = {
+                "query_geometry": {
+                    "type": "Feature",
+                    "properties": {},
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [coordinates]
+                    }
+                }
+            };
+            
+            return JSON.stringify(payload, null, 4);
+        }
+
+        // Function to update WKT display
+        function updateWKT() {
+            const layers = drawnItems.getLayers();
+            if (layers.length === 0) {
+                document.getElementById('wkt-output').textContent = 'Draw a polygon on the map to see its WKT representation here.';
+                document.getElementById('copy-wkt-btn').style.display = 'none';
+                document.getElementById('geojson-output').textContent = 'Draw a polygon on the map to see its GeoJSON payload here.';
+                document.getElementById('copy-geojson-btn').style.display = 'none';
+                currentWKT = '';
+                currentGeoJSON = '';
+            } else if (layers.length === 1) {
+                currentWKT = polygonToWKT(layers[0]);
+                document.getElementById('wkt-output').textContent = currentWKT;
+                document.getElementById('copy-wkt-btn').style.display = 'inline-block';
+                
+                currentGeoJSON = polygonToGeoJSON(layers[0]);
+                document.getElementById('geojson-output').textContent = currentGeoJSON;
+                document.getElementById('copy-geojson-btn').style.display = 'inline-block';
+            } else {
+                // Multiple polygons - create MULTIPOLYGON
+                const polygons = layers.map(layer => {
+                    const latlngs = layer.getLatLngs()[0];
+                    const coords = latlngs.map(latlng => `${latlng.lng} ${latlng.lat}`).join(', ');
+                    const firstCoord = `${latlngs[0].lng} ${latlngs[0].lat}`;
+                    return `((${coords}, ${firstCoord}))`;
+                }).join(', ');
+                currentWKT = `MULTIPOLYGON(${polygons})`;
+                document.getElementById('wkt-output').textContent = currentWKT;
+                document.getElementById('copy-wkt-btn').style.display = 'inline-block';
+                
+                // For GeoJSON with multiple polygons, show only the first one
+                currentGeoJSON = polygonToGeoJSON(layers[0]);
+                document.getElementById('geojson-output').textContent = currentGeoJSON + '\n\n(Note: Multiple polygons drawn. Showing first polygon only.)';
+                document.getElementById('copy-geojson-btn').style.display = 'inline-block';
+            }
+        }
+
+        // Event handlers
+        map.on(L.Draw.Event.CREATED, function(e) {
+            const layer = e.layer;
+            drawnItems.addLayer(layer);
+            updateWKT();
+        });
+
+        map.on(L.Draw.Event.EDITED, function(e) {
+            updateWKT();
+        });
+
+        map.on(L.Draw.Event.DELETED, function(e) {
+            updateWKT();
+        });
+
+        // Copy to clipboard functionality
+        document.getElementById('copy-wkt-btn').addEventListener('click', function() {
+            navigator.clipboard.writeText(currentWKT).then(function() {
+                const btn = document.getElementById('copy-wkt-btn');
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.style.background = '#2196F3';
+                setTimeout(function() {
+                    btn.textContent = originalText;
+                    btn.style.background = '#4CAF50';
+                }, 2000);
+            }).catch(function(err) {
+                alert('Failed to copy to clipboard: ' + err);
+            });
+        });
+
+        document.getElementById('copy-geojson-btn').addEventListener('click', function() {
+            navigator.clipboard.writeText(currentGeoJSON).then(function() {
+                const btn = document.getElementById('copy-geojson-btn');
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.style.background = '#2196F3';
+                setTimeout(function() {
+                    btn.textContent = originalText;
+                    btn.style.background = '#4CAF50';
+                }, 2000);
+            }).catch(function(err) {
+                alert('Failed to copy to clipboard: ' + err);
+            });
+        });
+    </script>
+</body>
+</html>

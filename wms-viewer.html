@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WMS Layer Viewer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #controls {
+            padding: 15px;
+            background: #f5f5f5;
+            border-bottom: 2px solid #ddd;
+        }
+        #controls input {
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        #wmsUrl {
+            width: 350px;
+        }
+        #layerName {
+            width: 200px;
+        }
+        button {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #map {
+            flex: 1;
+        }
+        #layers {
+            padding: 10px 15px;
+            background: #f9f9f9;
+            border-top: 1px solid #ddd;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .layer-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .layer-item button {
+            padding: 4px 10px;
+            background: #dc3545;
+            font-size: 12px;
+        }
+        .layer-item button:hover {
+            background: #c82333;
+        }
+        .layer-name {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <input type="text" id="wmsUrl" placeholder="WMS Service URL (e.g., https://example.com/wms)">
+        <input type="text" id="layerName" placeholder="Layer Name (e.g., layer:name)">
+        <button onclick="addWMSLayer()">Add Layer</button>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div id="layers">
+        <strong>Active Layers:</strong>
+        <div id="layerList"></div>
+    </div>
+
+    <script>
+        const map = L.map('map').setView([0, 0], 2);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        const activeLayers = [];
+
+        function addWMSLayer() {
+            const url = document.getElementById('wmsUrl').value.trim();
+            const layers = document.getElementById('layerName').value.trim();
+            
+            if (!url || !layers) {
+                alert('Please enter both WMS URL and Layer Name');
+                return;
+            }
+
+            const wmsLayer = L.tileLayer.wms(url, {
+                layers: layers,
+                format: 'image/png',
+                transparent: true,
+                attribution: 'WMS Layer'
+            }).addTo(map);
+
+            const layerId = Date.now();
+            activeLayers.push({ id: layerId, layer: wmsLayer, url, name: layers });
+            
+            updateLayerList();
+            
+            document.getElementById('wmsUrl').value = '';
+            document.getElementById('layerName').value = '';
+        }
+
+        function removeLayer(id) {
+            const index = activeLayers.findIndex(l => l.id === id);
+            if (index !== -1) {
+                map.removeLayer(activeLayers[index].layer);
+                activeLayers.splice(index, 1);
+                updateLayerList();
+            }
+        }
+
+        function updateLayerList() {
+            const list = document.getElementById('layerList');
+            if (activeLayers.length === 0) {
+                list.innerHTML = '<div style="padding: 10px; color: #999;">No layers added yet</div>';
+                return;
+            }
+            
+            list.innerHTML = activeLayers.map(l => `
+                <div class="layer-item">
+                    <div>
+                        <span class="layer-name">${l.name}</span>
+                        <span style="color: #666; font-size: 12px;">${l.url}</span>
+                    </div>
+                    <button onclick="removeLayer(${l.id})">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        updateLayerList();
+    </script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Renderer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            display: flex;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .editor, .preview {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #ddd;
+        }
+
+        .preview {
+            border-right: none;
+            background-color: #fafafa;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            resize: none;
+            padding: 0;
+        }
+
+        .preview-content {
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .preview-content h1,
+        .preview-content h2,
+        .preview-content h3,
+        .preview-content h4,
+        .preview-content h5,
+        .preview-content h6 {
+            margin-top: 24px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .preview-content h1 { font-size: 32px; }
+        .preview-content h2 { font-size: 24px; }
+        .preview-content h3 { font-size: 20px; }
+        .preview-content h4 { font-size: 16px; }
+        .preview-content h5 { font-size: 14px; }
+        .preview-content h6 { font-size: 12px; }
+
+        .preview-content p {
+            margin-bottom: 16px;
+        }
+
+        .preview-content ul,
+        .preview-content ol {
+            margin-left: 20px;
+            margin-bottom: 16px;
+        }
+
+        .preview-content li {
+            margin-bottom: 4px;
+        }
+
+        .preview-content code {
+            background-color: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+        }
+
+        .preview-content pre {
+            background-color: #f0f0f0;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+
+        .preview-content pre code {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+        }
+
+        .preview-content blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 12px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+
+        .preview-content a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+
+        .preview-content a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor">
+            <textarea id="markdown-input" placeholder="Enter markdown here..."></textarea>
+        </div>
+        <div class="preview">
+            <div class="preview-content" id="preview"></div>
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('markdown-input');
+        const preview = document.getElementById('preview');
+
+        function updatePreview() {
+            preview.innerHTML = marked.parse(input.value);
+        }
+
+        input.addEventListener('input', updatePreview);
+
+        // Initial preview
+        updatePreview();
+    </script>
+</body>
+</html>

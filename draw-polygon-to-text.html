@@ -132,21 +132,36 @@
         let currentWKT = '';
         let currentGeoJSON = '';
 
+        // Function to normalize longitude to -180 to 180 range
+        function normalizeLongitude(lng) {
+            // Normalize to -180 to 180 range
+            while (lng > 180) lng -= 360;
+            while (lng < -180) lng += 360;
+            return lng;
+        }
+
         // Function to convert polygon to WKT
         function polygonToWKT(layer) {
             const latlngs = layer.getLatLngs()[0];
-            const coords = latlngs.map(latlng => `${latlng.lng} ${latlng.lat}`).join(', ');
+            const coords = latlngs.map(latlng => {
+                const normalizedLng = normalizeLongitude(latlng.lng);
+                return `${normalizedLng} ${latlng.lat}`;
+            }).join(', ');
             // Close the polygon by repeating the first coordinate
-            const firstCoord = `${latlngs[0].lng} ${latlngs[0].lat}`;
+            const firstCoord = `${normalizeLongitude(latlngs[0].lng)} ${latlngs[0].lat}`;
             return `POLYGON((${coords}, ${firstCoord}))`;
         }
 
         // Function to convert polygon to GeoJSON payload
         function polygonToGeoJSON(layer) {
             const latlngs = layer.getLatLngs()[0];
-            const coordinates = latlngs.map(latlng => [latlng.lng, latlng.lat]);
+            const coordinates = latlngs.map(latlng => {
+                const normalizedLng = normalizeLongitude(latlng.lng);
+                return [normalizedLng, latlng.lat];
+            });
             // Close the polygon by repeating the first coordinate
-            coordinates.push([latlngs[0].lng, latlngs[0].lat]);
+            const normalizedFirstLng = normalizeLongitude(latlngs[0].lng);
+            coordinates.push([normalizedFirstLng, latlngs[0].lat]);
             
             const payload = {
                 "query_geometry": {
@@ -184,8 +199,11 @@
                 // Multiple polygons - create MULTIPOLYGON
                 const polygons = layers.map(layer => {
                     const latlngs = layer.getLatLngs()[0];
-                    const coords = latlngs.map(latlng => `${latlng.lng} ${latlng.lat}`).join(', ');
-                    const firstCoord = `${latlngs[0].lng} ${latlngs[0].lat}`;
+                    const coords = latlngs.map(latlng => {
+                        const normalizedLng = normalizeLongitude(latlng.lng);
+                        return `${normalizedLng} ${latlng.lat}`;
+                    }).join(', ');
+                    const firstCoord = `${normalizeLongitude(latlngs[0].lng)} ${latlngs[0].lat}`;
                     return `((${coords}, ${firstCoord}))`;
                 }).join(', ');
                 currentWKT = `MULTIPOLYGON(${polygons})`;
